@@ -6,19 +6,15 @@ export interface ShoppingListItem {
   totalAmount: number;
   isChecked: boolean;
   extraAmount: number;
+  calculatedAmount: number;
 }
 
 export function useShoppingList(startDate: string, endDate: string) {
   const shoppingList = useLiveQuery(
     async () => {
-      if (!startDate || !endDate) return [];
-
-      const meals = await db.mealPlan
-        .where('date')
-        .between(startDate, endDate, true, true)
-        .toArray();
-
-      if (meals.length === 0) return [];
+      const meals = (startDate && endDate)
+        ? await db.mealPlan.where('date').between(startDate, endDate, true, true).toArray()
+        : [];
 
       const recipeIds = Array.from(new Set(meals.map((m) => m.recipeId)));
       const recipes = await db.recipes.where('id').anyOf(recipeIds).toArray();
@@ -29,13 +25,6 @@ export function useShoppingList(startDate: string, endDate: string) {
         .anyOf(recipeIds)
         .toArray();
 
-      const ingredientIds = Array.from(new Set(recipeIngredients.map((ri) => ri.ingredientId)));
-      const ingredients = await db.ingredients.where('id').anyOf(ingredientIds).toArray();
-      const ingredientsMap = new Map(ingredients.map((i) => [i.id, i]));
-
-      const overrides = await db.shoppingListOverride.toArray();
-      const overridesMap = new Map(overrides.map((o) => [o.ingredientId, o]));
-
       const totalsMap = new Map<number, number>();
 
       for (const meal of meals) {
@@ -43,7 +32,6 @@ export function useShoppingList(startDate: string, endDate: string) {
         if (!recipe || !recipe.id) continue;
 
         const ratio = meal.servings / recipe.servings;
-
         const currentRecipeIngredients = recipeIngredients.filter((ri) => ri.recipeId === recipe.id);
 
         for (const ri of currentRecipeIngredients) {
@@ -52,18 +40,37 @@ export function useShoppingList(startDate: string, endDate: string) {
         }
       }
 
+      const overrides = await db.shoppingListOverride.toArray();
+      const overridesMap = new Map(overrides.map((o) => [o.ingredientId, o]));
+
+      const allIngredientIds = Array.from(
+        new Set([
+          ...totalsMap.keys(),
+          ...overrides.filter(o => o.extraAmount !== 0).map(o => o.ingredientId)
+        ])
+      );
+
+      if (allIngredientIds.length === 0) return [];
+
+      const ingredients = await db.ingredients.where('id').anyOf(allIngredientIds).toArray();
+      const ingredientsMap = new Map(ingredients.map((i) => [i.id, i]));
+
       const items: ShoppingListItem[] = [];
 
-      for (const [ingredientId, calculatedAmount] of totalsMap.entries()) {
+      for (const ingredientId of allIngredientIds) {
         const ingredient = ingredientsMap.get(ingredientId);
         if (!ingredient) continue;
 
+        const calculatedAmount = totalsMap.get(ingredientId) || 0;
         const override = overridesMap.get(ingredientId);
         const extraAmount = override?.extraAmount ?? 0;
         const totalAmount = Math.round((calculatedAmount + extraAmount) * 10) / 10;
 
+        if (totalAmount <= 0) continue;
+
         items.push({
           ingredient,
+          calculatedAmount,
           totalAmount,
           isChecked: override?.isChecked ?? false,
           extraAmount,

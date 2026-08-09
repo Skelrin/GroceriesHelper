@@ -43,5 +43,6 @@ export default defineConfig({
         skipWaiting: true
       }
     })
-  ]
+  ],
+  base: '/GroceriesHelper/',
 });
