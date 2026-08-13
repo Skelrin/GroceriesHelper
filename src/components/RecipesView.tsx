@@ -128,12 +128,11 @@ export function RecipesView() {
 
           <div className="p-3 bg-white border rounded-lg">
             <label className="block text-sm font-medium text-gray-700 mb-2">Ingrédients de la recette</label>
-            
-            <div className="flex gap-2 mb-3">
+            <div className="flex flex-col sm:flex-row gap-2 mb-3">
               <select
                 value={currentIngredientId}
                 onChange={(e) => setCurrentIngredientId(e.target.value ? Number(e.target.value) : '')}
-                className="p-2 border rounded-lg flex-1 text-sm"
+                className="p-2 border rounded-lg flex-1 min-w-0 text-sm truncate bg-white"
               >
                 <option value="">Sélectionner un ingrédient</option>
                 {ingredients.map((ing) => (
@@ -143,23 +142,25 @@ export function RecipesView() {
                 ))}
               </select>
 
-              <input
-                type="number"
-                placeholder="Qté"
-                min="0.1"
-                step="any"
-                value={currentAmount}
-                onChange={(e) => setCurrentAmount(e.target.value ? Number(e.target.value) : '')}
-                className="p-2 border rounded-lg w-20 text-sm"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  placeholder="Qté"
+                  min="0.1"
+                  step="any"
+                  value={currentAmount}
+                  onChange={(e) => setCurrentAmount(e.target.value ? Number(e.target.value) : '')}
+                  className="p-2 border rounded-lg w-24 sm:w-20 text-sm shrink-0"
+                />
 
-              <button
-                type="button"
-                onClick={handleAddIngredientToRecipe}
-                className="bg-slate-800 text-white px-3 py-2 rounded-lg text-sm"
-              >
-                Ajouter
-              </button>
+                <button
+                  type="button"
+                  onClick={handleAddIngredientToRecipe}
+                  className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-medium shrink-0 flex-1 sm:flex-initial"
+                >
+                  Ajouter
+                </button>
+              </div>
             </div>
 
             {recipeIngredients.length > 0 ? (
